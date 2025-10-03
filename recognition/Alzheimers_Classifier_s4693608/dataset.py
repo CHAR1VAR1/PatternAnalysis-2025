@@ -1,51 +1,76 @@
 import os
 import torch
 from torch.utils.data import Dataset, DataLoader
-import nibabel as nib
-import numpy as np
+from PIL import Image
 import torchvision.transforms as transforms
 
 class ADNIDataset(Dataset):
     """
-    PyTorch Dataset class for loading and preprocessing ADNI brain MRI scans.
-
-    This dataset takes a list of file paths (NIfTI format) and corresponding labels,
-    loads each scan, extracts a representative 2D slice, normalizes the image, and 
-    optionally applies transforms before returning a tensor with its label.
+    A PyTorch Dataset for loading 2D MRI image slices from the ADNI dataset,
+    organized into Alzheimer's disease (AD) and normal control (NC) categories.
 
     Args:
-        file_paths (list of str): List of paths to NIfTI image files (.nii or .nii.gz).
-        labels (list of int): List of integer labels corresponding to each file.
-                              (e.g., 0 = Normal, 1 = Alzheimer's).
-        transform (callable, optional): A torchvision transform or custom function
-                                        applied to the image tensor.
+        root_dir (str): Path to the AD_NC directory containing "train" and "test".
+        split (str): Which dataset split to use, "train" or "test".
+        transform (callable, optional): Optional transform to be applied on an image.
 
-    Returns:
-        tuple: (image_tensor, label), where
-            - image_tensor (torch.FloatTensor): Preprocessed 2D brain slice, shape [1, H, W].
-            - label (torch.LongTensor): Class label for the image.
+    Attributes:
+        samples (list): List of tuples (image_path, label) for all samples
+                        in the specified split.
     """
 
-def get_dataloaders(train_files, val_files, test_files,
-                    train_labels, val_labels, test_labels,
-                    batch_size=16):
-    """
-    Creates PyTorch DataLoader objects for training, validation, and testing.
+    def __init__(self, root_dir, split="train", transform=None):
+        self.root_dir = os.path.join(root_dir, split)   # path automatically goes to train folder
+        self.transform = transform
+        self.samples = []   # (image_path, label)
 
-    Given lists of file paths and labels for each split, this function constructs
-    ADNIDataset objects, applies preprocessing/transforms, and wraps them in
-    DataLoader objects for efficient batching and iteration.
+        # get all (image_path, label) pairs
+        for label_name, label in [("AD", 1), ("NC", 0)]:
+            class_dir = os.path.join(self.root_dir, label_name)
+            for fname in os.listdir(class_dir):
+                self.samples.append((os.path.join(class_dir, fname), label))
+
+    def __len__(self):
+        return len(self.samples)
+    
+    def __getitem__(self, idx):
+        img_path, label = self.samples[idx]
+        image = Image.open(img_path)
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, torch.tensor(label, dtype=torch.long)
+
+def get_dataloaders(root_dir, batch_size=16):
+    """
+    Create PyTorch DataLoaders for the ADNI dataset.
+
+    This function initializes ADNIDataset instances for the training and
+    testing splits, applies preprocessing transforms (resize, tensor conversion,
+    normalisation), and returns DataLoaders for batched access.
 
     Args:
-        train_files (list of str): File paths for training images.
-        val_files (list of str): File paths for validation images.
-        test_files (list of str): File paths for testing images.
-        train_labels (list of int): Class labels for training images.
-        val_labels (list of int): Class labels for validation images.
-        test_labels (list of int): Class labels for testing images.
-        batch_size (int, optional): Number of samples per batch. Defaults to 16.
+        root_dir (str): Path to the AD_NC directory containing 'train' and 'test'.
+        batch_size (int, optional): Number of samples per batch. Default is 16.
 
     Returns:
-        tuple: (train_loader, val_loader, test_loader), where each is a
-               torch.utils.data.DataLoader ready for use in training loops.
+        tuple:
+            - train_loader (DataLoader): DataLoader for the training set,
+                                         with shuffling enabled.
+            - test_loader (DataLoader): DataLoader for the test set,
+                                        with shuffling disabled.
     """
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transform.ToTensor(),
+        transform.Normalize(mean=[0.5], std=[0.5])
+    ])
+
+    train_dataset = ADNIDataset(os.path.join(root_dir, "AD_NC"), split="train", transform=transform)
+    test_dataset = ADNIDataset(os.path.join(root_dir, "AD_NC"), split="test", transform=transform)
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader
