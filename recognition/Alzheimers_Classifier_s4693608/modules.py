@@ -22,3 +22,19 @@ class AlzheimersClassifier(nn.Module):
         Takes grayscale input of shape [B, 1, H, W], duplicates channels,
         and outputs logits of shape [B, 2].
     """
+    def __init__(self, model_name="convnext_tiny", num_classes=2, pretrained=True):
+        super().__init__()
+        # Load pretrained ConvNeXt backbone
+        self.model = timm.create_model(model_name, pretrained=pretrained)
+
+        # Replace classifier head (for 2 classes instead of 1000)
+        in_features = self.model.get_classifier().in_features
+        self.model.reset_classifier(num_classes)
+
+        # Overwrite with new classifier layer
+        self.model.head = nn.Linear(in_features, num_classes)
+
+    def forward(self, x):
+        # duplicate x channels ([B, 1, H, W] -> [B, 3, H, W])
+        x = x.repeat(1, 3, 1, 1)
+        return self.model(x)
