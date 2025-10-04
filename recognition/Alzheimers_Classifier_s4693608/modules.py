@@ -28,11 +28,7 @@ class AlzheimersClassifier(nn.Module):
         self.model = timm.create_model(model_name, pretrained=pretrained)
 
         # Replace classifier head (for 2 classes instead of 1000)
-        in_features = self.model.get_classifier().in_features
-        self.model.reset_classifier(num_classes)
-
-        # Overwrite with new classifier layer
-        self.model.head = nn.Linear(in_features, num_classes)
+        self.model.reset_classifier(num_classes=num_classes)
 
     def forward(self, x):
         # duplicate x channels ([B, 1, H, W] -> [B, 3, H, W])
