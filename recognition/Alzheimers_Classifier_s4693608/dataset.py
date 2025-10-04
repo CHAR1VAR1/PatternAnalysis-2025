@@ -63,8 +63,8 @@ def get_dataloaders(root_dir, batch_size=16):
     """
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
-        transform.ToTensor(),
-        transform.Normalize(mean=[0.5], std=[0.5])
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5], std=[0.5])
     ])
 
     train_dataset = ADNIDataset(os.path.join(root_dir, "AD_NC"), split="train", transform=transform)
@@ -73,4 +73,4 @@ def get_dataloaders(root_dir, batch_size=16):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    return train_loader
+    return train_loader, test_loader
