@@ -37,7 +37,7 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
     criterion = nn.CrossEntropyLoss()
     optimiser = optim.AdamW(model.parameters(), lr=lr)
 
-    train_losses, val_losses = val_accs = [], [], []
+    train_losses, val_losses, val_accs = [], [], []
     best_acc = 0.0
 
     for epoch in range(epochs):
