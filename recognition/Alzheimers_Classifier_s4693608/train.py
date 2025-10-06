@@ -57,3 +57,48 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
 
         train_loss = running_loss / len(train_loader)
         train_losses.append(train_loss)
+
+        # Validation
+        model.eval()
+        correct, total, val_loss = 0, 0, 0.0
+        with torch.no_grad():
+            for images, labels in test_loader:
+                images, labels = images.to(device), labels.to(device)
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+                val_loss += loss.item()
+
+                _, predicted = torch.max(outputs, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+
+            val_acc = correct / total
+            val_loss /= len(test_loader)
+
+            val_losses.append(val_loss)
+            val_accs.append(val_acc)
+
+            print(f"Epoch {epoch+1}/{epochs} | "
+                  f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
+            
+            # Save the best model
+            if val_acc > best_acc:
+                best_acc = val_acc
+                torch.save(model.state_dict(), "best_model.pth")
+                print("New best model saved!")
+
+    # Plot training curves
+    plt.figure()
+    plt.plot(train_losses, label="Train Loss")
+    plt.plot(val_losses, label="Val Loss")
+    plt.legend()
+    plt.title("Training and Validation Loss")
+    plt.savefig("loss_curve.png")
+
+    plt.figure()
+    plt.plot(val_accs, label="Val Accuracy")
+    plt.legend()
+    plt.title("Validation Accuracy")
+    plt.savefig("val_acc_curve.png")
+
+    print(f"Best Validation Accuracy: {best_acc:.4f}")
