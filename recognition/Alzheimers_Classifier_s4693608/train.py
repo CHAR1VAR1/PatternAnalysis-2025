@@ -102,3 +102,7 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
     plt.savefig("val_acc_curve.png")
 
     print(f"Best Validation Accuracy: {best_acc:.4f}")
+
+if __name__ == "__main__":
+    root_dir = "/home/groups/comp3710/ADNI"
+    train_model(root_dir, epochs=10, batch_size=16, lr=1e-4)
