@@ -37,12 +37,12 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
     model = AlzheimersClassifier().to(device)
     criterion = nn.CrossEntropyLoss()
     optimiser = optim.AdamW(model.parameters(), lr=lr)
-    scheduler = ReduceLROnPlateau(optimiser, mode='max', factor=0.5, patience=2, verbose=True)
+    scheduler = ReduceLROnPlateau(optimiser, mode='max', factor=0.5, patience=2)
 
     train_losses, val_losses, val_accs = [], [], []
     best_acc = 0.0
     epochs_no_improve = 0
-    patience = 3
+    patience = 5
 
     for epoch in range(epochs):
         # Training
@@ -122,4 +122,4 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
 
 if __name__ == "__main__":
     root_dir = "/home/groups/comp3710/ADNI"
-    train_model(root_dir, epochs=10, batch_size=16, lr=1e-4)
+    train_model(root_dir, epochs=20, batch_size=32, lr=1e-4)

@@ -77,21 +77,20 @@ def evaluate_folder(model, folder_path, label):
         total (int): Total number of images evaluated.
         conf_sum (float): Current sum of confidence of classifcation of images in the folder.
     """
-    # label = 1 for AD, label = 0 for NC
     correct = total = conf_sum = 0
     for fname in os.listdir(folder_path):
         fpath = os.path.join(folder_path, fname)
         pred, conf = predict_image(fpath, model)
         total += 1
         correct += int(pred == label)
-        conf_sum += conf.item()
+        conf_sum += conf
     return correct, total, conf_sum
 
 if __name__ == "__main__":
     model = load_model()
 
     ad_path = "/home/groups/comp3710/ADNI/AD_NC/test/AD"
-    nc_path = ad_path = "/home/groups/comp3710/ADNI/AD_NC/test/NC"
+    nc_path = "/home/groups/comp3710/ADNI/AD_NC/test/NC"
     
     ad_correct, ad_total, ad_conf_sum = evaluate_folder(model, ad_path, label = 1)
     nc_correct, nc_total, nc_conf_sum = evaluate_folder(model, nc_path, label = 0)
@@ -107,4 +106,4 @@ if __name__ == "__main__":
     print(f"\n ----- Average Confidence Results -----")
     print(f"AD: {ad_conf_sum / ad_total * 100:.2f}%")
     print(f"NC: {nc_conf_sum / nc_total * 100:.2f}%")
-    print(f"Total: {(ad_conf_sum + nc_conf_sum) / total_images * 100:.2f}")
+    print(f"Total: {(ad_conf_sum + nc_conf_sum) / total_images * 100:.2f}%")
