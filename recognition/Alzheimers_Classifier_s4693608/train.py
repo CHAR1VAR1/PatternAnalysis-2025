@@ -41,6 +41,8 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
 
     train_losses, val_losses, val_accs = [], [], []
     best_acc = 0.0
+    epochs_no_improve = 0
+    patience = 3
 
     for epoch in range(epochs):
         # Training
@@ -85,12 +87,22 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
             
             # Update scheduler
             scheduler.step(val_acc)
+            current_lr = optimiser.param_groups[0]['lr']
+            print(f"Learning rate: {current_lr:.6f}")
             
             # Save the best model
             if val_acc > best_acc:
                 best_acc = val_acc
+                epochs_no_improve = 0
                 torch.save(model.state_dict(), "best_model.pth")
                 print("New best model saved!")
+            else:
+                epochs_no_improve += 1
+                print(f"No improvement for {epochs_no_improve} epoch(s).")
+
+            if epochs_no_improve >= patience:
+                print("\n Early stopping triggered!")
+                break
 
     # Plot training curves
     plt.figure()
