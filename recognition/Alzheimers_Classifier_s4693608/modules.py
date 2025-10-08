@@ -9,7 +9,7 @@ class AlzheimersClassifier(nn.Module):
     This class wraps a pretrained ConvNeXt model from the `timm` library and modifies it to:
       - Accept grayscale input images (1 channel) by duplicating them into 3 channels,
         since ConvNeXt expects RGB input.
-      - Replace the final classification head with a linear layer outputting 2 classes
+      - Replace the final classification head with a dropout rate and linear layer outputting 2 classes
         (Alzheimer's disease = 1, Normal Control = 0).
 
     Attributes:
@@ -22,13 +22,19 @@ class AlzheimersClassifier(nn.Module):
         Takes grayscale input of shape [B, 1, H, W], duplicates channels,
         and outputs logits of shape [B, 2].
     """
-    def __init__(self, model_name="convnext_tiny", num_classes=2, pretrained=True):
+    def __init__(self, model_name="convnext_base", num_classes=2, pretrained=True, dropout=0.4):
         super().__init__()
         # Load pretrained ConvNeXt backbone
         self.model = timm.create_model(model_name, pretrained=pretrained)
 
-        # Replace classifier head (for 2 classes instead of 1000)
-        self.model.reset_classifier(num_classes=num_classes)
+        # Get number of features in the original head
+        in_features = self.model.num_features
+
+        # Replace classifier with dropout + linear
+        self.model.head = nn.Sequential(
+            nn.Dropout(dropout),
+            nn.Linear(in_features, num_classes)
+        )
 
     def forward(self, x):
         # duplicate x channels ([B, 1, H, W] -> [B, 3, H, W])
