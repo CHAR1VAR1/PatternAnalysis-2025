@@ -2,6 +2,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from dataset import get_dataloaders
 from modules import AlzheimersClassifier
 import matplotlib.pyplot as plt
@@ -36,6 +37,7 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
     model = AlzheimersClassifier().to(device)
     criterion = nn.CrossEntropyLoss()
     optimiser = optim.AdamW(model.parameters(), lr=lr)
+    scheduler = ReduceLROnPlateau(optimiser, mode='max', factor=0.5, patience=2, verbose=True)
 
     train_losses, val_losses, val_accs = [], [], []
     best_acc = 0.0
@@ -80,6 +82,9 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
 
             print(f"Epoch {epoch+1}/{epochs} | "
                   f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
+            
+            # Update scheduler
+            scheduler.step(val_acc)
             
             # Save the best model
             if val_acc > best_acc:
