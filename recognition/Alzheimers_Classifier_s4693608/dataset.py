@@ -61,14 +61,23 @@ def get_dataloaders(root_dir, batch_size=16):
             - test_loader (DataLoader): DataLoader for the test set,
                                         with shuffling disabled.
     """
-    transform = transforms.Compose([
+    train_transform = transforms.Compose([
         transforms.Resize((224, 224)),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomRotation(degrees=10),
+        transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5], std=[0.5])
+        transforms.Normalize(mean=[0.1159], std=[0.2199])
     ])
 
-    train_dataset = ADNIDataset(os.path.join(root_dir, "AD_NC"), split="train", transform=transform)
-    test_dataset = ADNIDataset(os.path.join(root_dir, "AD_NC"), split="test", transform=transform)
+    test_transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.1159], std=[0.2199])
+    ])
+
+    train_dataset = ADNIDataset(os.path.join(root_dir, "AD_NC"), split="train", transform=train_transform)
+    test_dataset = ADNIDataset(os.path.join(root_dir, "AD_NC"), split="test", transform=test_transform)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
