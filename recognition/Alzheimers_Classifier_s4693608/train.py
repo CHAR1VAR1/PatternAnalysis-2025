@@ -2,7 +2,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import OneCycleLR
 from dataset import get_dataloaders
 from modules import AlzheimersClassifier
 import matplotlib.pyplot as plt
@@ -37,12 +37,21 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
     model = AlzheimersClassifier().to(device)
     criterion = nn.CrossEntropyLoss()
     optimiser = optim.AdamW(model.parameters(), lr=lr)
-    scheduler = ReduceLROnPlateau(optimiser, mode='max', factor=0.5, patience=2)
+
+    # scheduler
+    scheduler = OneCycleLR(
+        optimiser,
+        max_lr=lr * 10,
+        steps_per_epoch=len(train_loader),
+        epochs=epochs,
+        pct_start=0.3,
+        anneal_strategy='cos',
+        div_factor=10,
+        final_div_factor=1e4
+    )
 
     train_losses, val_losses, val_accs = [], [], []
     best_acc = 0.0
-    epochs_no_improve = 0
-    patience = 5
 
     for epoch in range(epochs):
         # Training
@@ -56,6 +65,7 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
             loss = criterion(outputs, labels)
             loss.backward()
             optimiser.step()
+            scheduler.step()
 
             running_loss += loss.item()
 
@@ -83,7 +93,10 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
             val_accs.append(val_acc)
 
             print(f"Epoch {epoch+1}/{epochs} | "
-                  f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
+                  f"Train Loss: {train_loss:.4f} | "
+                  f"Val Loss: {val_loss:.4f} | "
+                  f"Val Acc: {val_acc:.4f} | "
+                  f"LR: {current_lr:.6f}")
             
             # Update scheduler
             scheduler.step(val_acc)
@@ -93,30 +106,8 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
             # Save the best model
             if val_acc > best_acc:
                 best_acc = val_acc
-                epochs_no_improve = 0
                 torch.save(model.state_dict(), "best_model.pth")
                 print("New best model saved!")
-            else:
-                epochs_no_improve += 1
-                print(f"No improvement for {epochs_no_improve} epoch(s).")
-
-            if epochs_no_improve >= patience:
-                print("\n Early stopping triggered!")
-                break
-
-    # Plot training curves
-    plt.figure()
-    plt.plot(train_losses, label="Train Loss")
-    plt.plot(val_losses, label="Val Loss")
-    plt.legend()
-    plt.title("Training and Validation Loss")
-    plt.savefig("loss_curve.png")
-
-    plt.figure()
-    plt.plot(val_accs, label="Val Accuracy")
-    plt.legend()
-    plt.title("Validation Accuracy")
-    plt.savefig("val_acc_curve.png")
 
     print(f"Best Validation Accuracy: {best_acc:.4f}")
 

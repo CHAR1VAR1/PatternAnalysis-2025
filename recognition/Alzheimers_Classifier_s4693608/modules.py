@@ -22,7 +22,7 @@ class AlzheimersClassifier(nn.Module):
         Takes grayscale input of shape [B, 1, H, W], duplicates channels,
         and outputs logits of shape [B, 2].
     """
-    def __init__(self, model_name="convnext_base", num_classes=2, pretrained=True, dropout=0.4):
+    def __init__(self, model_name="convnext_base", num_classes=2, pretrained=True, dropout=0.5):
         super().__init__()
         # Load pretrained ConvNeXt backbone
         self.model = timm.create_model(model_name, pretrained=pretrained, num_classes=0)
@@ -43,4 +43,3 @@ class AlzheimersClassifier(nn.Module):
         x = self.dropout(x)
         x = self.fc(x)
         return x
-    
