@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     # Evaluate patient accuracy
     correct, total = 0, 0
-    for pid, (label, conf, probs) in patient_results.item():
+    for pid, (label, conf, probs) in patient_results.items():
         true_label = 1 if any("AD/" in p for p in patient_slices[pid]) else 0
         total += 1
         correct += int(label == true_label)
