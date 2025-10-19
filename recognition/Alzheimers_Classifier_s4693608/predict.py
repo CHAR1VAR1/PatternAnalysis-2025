@@ -3,6 +3,8 @@ import torch
 from torchvision import transforms
 from PIL import Image
 from modules import AlzheimersClassifier
+from collections import defaultdict
+import numpy as np
 
 def load_model(model_path="best_model.pth"):
     """
@@ -24,7 +26,7 @@ def load_model(model_path="best_model.pth"):
     model.eval()
     return model
 
-def predict_image(image_path, model):
+def predict_slice(image_path, model):
     """
     The function loads a grayscale MRI slice, applies the same preprocessing
     transformations used during training (resize, tensor conversion, normalization),
@@ -39,7 +41,7 @@ def predict_image(image_path, model):
         tuple:
             - prediction (int): Predicted class label value (1 for "AD" or 0 for "NC").
             - confidence (float): Model confidence for the predicted class,
-                                  between 0.0 and 1.0.
+              between 0.0 and 1.0.
     """
     image = Image.open(image_path)
 
@@ -47,63 +49,66 @@ def predict_image(image_path, model):
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5], std=[0.5])
+        transforms.Normalize(mean=[0.1159], std=[0.2199])
     ])
     image = transform(image).unsqueeze(0).to("cuda")
 
     with torch.no_grad():
         outputs = model(image)
-        probs = torch.softmax(outputs, dim=1)
-        conf, pred = torch.max(probs, dim=1)
+        probs = torch.softmax(outputs, dim=1)[0].cpu().numpy()
 
-    class_names = ["NC", "AD"]
-    label = class_names[pred.item()]
-    print(f"Prediction: {label} ({conf.item() * 100:.2f}% confidence)")
-    return pred.item(), conf.item()
+    return probs
 
-def evaluate_folder(model, folder_path, label):
+def aggregate_patient_predictions(patient_probs):
     """
-    This function iterates through all `.jpeg` files in the specified folder,
-    performs inference using the provided model, and counts how many predictions
-    match the expected label.
+    Given a list of [NC_prob, AD_prob] arrays for one patient,
+    average them and return predicted label + confidence.
 
     Args:
-        model : The trained PyTorch model used for prediction.
-        folder_path (str): Path to the folder containing `.jpeg` images to evaluate.
-        label (int): The ground truth label for all images in this folder
+        patient_probs (dict): probabilities of AD case for all slices of one patient.
 
     Returns:
-        correct (int): Number of correctly classified images.
-        total (int): Total number of images evaluated.
-        conf_sum (float): Current sum of confidence of classifcation of images in the folder.
+        tuple:
+            - label (str): Predicted class label value (1 for "AD" or 0 for "NC").
+            - confidence (float): Model confidence for the predicted class,
+              between 0.0 and 1.0.
+            - mean_probs (int): mean probability of AD case across aggregated slices
+              for a patient.
     """
-    correct = total = conf_sum = 0
-    for fname in os.listdir(folder_path):
-        fpath = os.path.join(folder_path, fname)
-        pred, conf = predict_image(fpath, model)
-        total += 1
-        correct += int(pred == label)
-        conf_sum += conf
-    return correct, total, conf_sum
+    mean_probs = np.mean(patient_probs, axis=0)
+    label = np.argmax(mean_probs)
+    confidence = mean_probs[label]
+
+    return label, confidence, mean_probs
 
 if __name__ == "__main__":
     model = load_model()
+    root_dir = "/home/groups/comp3710/ADNI/AD_NC/test"
+    class_names = ["NC", "AD"]
 
-    ad_path = "/home/groups/comp3710/ADNI/AD_NC/test/AD"
-    nc_path = "/home/groups/comp3710/ADNI/AD_NC/test/NC"
-    
-    ad_correct, ad_total, ad_conf_sum = evaluate_folder(model, ad_path, label = 1)
-    nc_correct, nc_total, nc_conf_sum = evaluate_folder(model, nc_path, label = 0)
+    # Group all slices by patient id
+    patient_slices = defaultdict(list)
+    for cls in ["AD", "NC"]:
+        folder = os.path.join(root_dir, cls)
+        for fname in os.listdir(folder):
+            patient_id = fname.split('_')[0]
+            patient_slices[patient_id].append(os.path.join(folder, fname))
 
-    total_correct = ad_correct + nc_correct
-    total_images = ad_total + nc_total
-    accuracy = total_correct / total_images
+    # Predict each slice and aggregate
+    patient_results = {}
+    for pid, slice_paths in patient_slices.items():
+        slice_probs = [predict_slice(p, model) for p in slice_paths]
+        label, conf, mean_probs = aggregate_patient_predictions(slice_probs)
+        patient_results[pid] = (label, conf, mean_probs)
 
-    print(f"\n ----- Evaluation Results -----")
-    print(f"AD: {ad_correct}/{ad_total} correct ({ad_correct / ad_total * 100:.2f}%)")
-    print(f"NC: {nc_correct}/{nc_total} correct ({nc_correct / nc_total * 100:.2f}%)")
-    print(f"Overall Accuracy: {accuracy*100:.2f}%")
-    print(f"\n ----- Average Confidence Results -----")
-    print(f"AD: {ad_conf_sum / ad_total * 100:.2f}%")
-    print(f"NC: {nc_conf_sum / nc_total * 100:.2f}%")
-    print(f"Total: {(ad_conf_sum + nc_conf_sum) / total_images * 100:.2f}%")
+    # Evaluate patient accuracy
+    correct, total = 0, 0
+    for pid, (label, conf, probs) in patient_results.item():
+        true_label = 1 if any("AD/" in p for p in patient_slices[pid]) else 0
+        total += 1
+        correct += int(label == true_label)
+
+        print(f"Patient {pid}: Predicted {class_names[label]} ({conf * 100:.2f}%)"
+              f" | True: {class_names[true_label]}")
+
+    print(f"\nPatient Prediction Accuracy: {100 * correct / total:.2f}%")
