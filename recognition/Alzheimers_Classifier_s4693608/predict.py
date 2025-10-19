@@ -31,17 +31,14 @@ def predict_slice(image_path, model):
     The function loads a grayscale MRI slice, applies the same preprocessing
     transformations used during training (resize, tensor conversion, normalization),
     and performs a forward pass through the trained model to obtain the predicted
-    class and associated confidence score.
+    probability of AD/NC case.
 
     Args:
         image_path (str): Path to the input image (e.g., .jpeg slice).
         model (torch.nn.Module): Trained AlzheimersClassifier model instance.
 
     Returns:
-        tuple:
-            - prediction (int): Predicted class label value (1 for "AD" or 0 for "NC").
-            - confidence (float): Model confidence for the predicted class,
-              between 0.0 and 1.0.
+        probs (float): probability of AD/NC case.
     """
     image = Image.open(image_path)
 
@@ -72,7 +69,7 @@ def aggregate_patient_predictions(patient_probs):
             - label (str): Predicted class label value (1 for "AD" or 0 for "NC").
             - confidence (float): Model confidence for the predicted class,
               between 0.0 and 1.0.
-            - mean_probs (int): mean probability of AD case across aggregated slices
+            - mean_probs (float): mean probability of AD case across aggregated slices
               for a patient.
     """
     mean_probs = np.mean(patient_probs, axis=0)
