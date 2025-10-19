@@ -111,4 +111,4 @@ if __name__ == "__main__":
         print(f"Patient {pid}: Predicted {class_names[label]} ({conf * 100:.2f}%)"
               f" | True: {class_names[true_label]}")
 
-    print(f"\nPatient Prediction Accuracy: {100 * correct / total:.2f}%")
+    print(f"Patient Prediction Accuracy: {100 * correct / total:.2f}%\n")
