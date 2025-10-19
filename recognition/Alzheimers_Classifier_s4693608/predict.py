@@ -65,7 +65,7 @@ def aggregate_patient_predictions(patient_probs):
     average them and return predicted label + confidence.
 
     Args:
-        patient_probs (dict): probabilities of AD case for all slices of one patient.
+        patient_probs (list): probabilities of AD case for all slices of one patient.
 
     Returns:
         tuple:
