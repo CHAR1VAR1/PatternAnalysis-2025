@@ -35,13 +35,13 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
 
     # Define model, loss, optimiser
     model = AlzheimersClassifier().to(device)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(weight=torch.tensor([2.0, 1.0]).to(device))
     optimiser = optim.AdamW(model.parameters(), lr=lr)
 
     # scheduler
     scheduler = OneCycleLR(
         optimiser,
-        max_lr=lr * 10,
+        max_lr=lr * 5,
         steps_per_epoch=len(train_loader),
         epochs=epochs,
         pct_start=0.3,
@@ -113,4 +113,4 @@ def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
 
 if __name__ == "__main__":
     root_dir = "/home/groups/comp3710/ADNI"
-    train_model(root_dir, epochs=20, batch_size=32, lr=1e-4)
+    train_model(root_dir, epochs=30, batch_size=32, lr=1e-4)
