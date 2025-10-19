@@ -5,7 +5,6 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import OneCycleLR
 from dataset import get_dataloaders
 from modules import AlzheimersClassifier
-import matplotlib.pyplot as plt
 
 def train_model(root_dir, epochs=10, batch_size=16, lr=1e-4, device='cuda'):
     """
